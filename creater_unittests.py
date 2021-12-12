@@ -124,7 +124,7 @@ class PYTHON_FILE_TO_DICT:
     
     def file_to_dict(self):
         class_marker = -1
-        
+        regex = STRING_PATTERN_FINDER()
         for string in self.__read_file():
         
             from_s, import_s = regex.to_find_import_libs(string)
