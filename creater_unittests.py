@@ -32,9 +32,9 @@ class CREATE_UNITTEST_FILE:
                         test_action_out = method['test_dict']['out_action']
                         if not var:
                             test_action_in=''
-                        method_string = '\n\n\tdef test_{}(self):\n\t\tself.{}({}.{}({}), {}))\n\t\tpass\n'.format(method['def_name'], test_action, class_obj ,method['def_name'], test_action_in, test_action_out)
+                        method_string = '\n\n\tdef test_{}(self):\n\t\tself.{}({}.{}({}), {})\n\n'.format(method['def_name'], test_action, class_obj ,method['def_name'], test_action_in, test_action_out)
                     else:
-                        method_string = '\n\n\tdef test_{}(self):\n\t\tself.asertEqual({}.{}({}), return_value {})\n\t\tpass\n'.format(method['def_name'], class_obj ,method['def_name'], var, def_return)
+                        method_string = '\n\n\tdef test_{}(self):\n\t\tself.asertEqual({}.{}({}), return_value {})\n\n'.format(method['def_name'], class_obj ,method['def_name'], var, def_return)
                     class_name_string+=method_string
             body_string+='{}\n\n'.format(class_name_string)
         
@@ -130,13 +130,14 @@ class STRING_PATTERN_FINDER:
 
             if re.search('in\s+(.*)\s+out',string_comment):
                 dict_out['in_action'] = re.search('in\s+(.*)\s+out',string_comment)[0]
-                dict_out['in_action'] = re.sub('in\s*[(]','',dict_out['in_action'])
-                dict_out['in_action'] = re.sub('[)]\s*out','',dict_out['in_action'])
+                dict_out['in_action'] = re.sub('in\s*\(','',dict_out['in_action'])
+                dict_out['in_action'] = re.sub('\)\s*out','',dict_out['in_action'])
                 
-            if re.search('out\s*(.*)',string_comment):
+            if re.search('out\s*(.*)\s+end',string_comment):
                 dict_out['out_action'] = re.search('out\s*(.*)',string_comment)[0]
-                dict_out['out_action'] = re.sub('out\s*[(]','', dict_out['out_action'])
-                dict_out['out_action'] = re.sub('[)]\s*','', dict_out['out_action'])
+                dict_out['out_action'] = re.sub('out\s*\(','', dict_out['out_action'])
+                dict_out['out_action'] = re.sub('\)\s+end', '',dict_out['out_action'])
+
                 
             if re.search('is\s+[eq,equal,==,assertequal]+\s+in',string_comment.lower()):
                 dict_out['action'] = 'assertEqual'
