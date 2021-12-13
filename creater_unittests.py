@@ -79,6 +79,8 @@ class STRING_PATTERN_FINDER:
                 def_name = re.search(r'^def.+?[(]', string)[0].replace('(','').replace('def','').replace(' ','')
                 variable_names = re.search(r'[(].*?[)]', string)[0].replace('(','').replace(')','').replace(' ','')
                 return sub_def, def_name, variable_names
+            else:
+                return 0,0,0
             
         else:
             return 0, 0, 0
@@ -102,6 +104,8 @@ class STRING_PATTERN_FINDER:
             elif re.search('import .+', string):
                 object_in_module = re.search('import .+', string)[0].replace('import', '').replace(' ','')
                 return 0, object_in_module
+            else:
+                return 0,0
             
         else:
             return 0,0
@@ -129,6 +133,7 @@ class PYTHON_FILE_TO_DICT:
         
             from_s, import_s = regex.to_find_import_libs(string)
             class_name, parent_class_name = regex.to_find_class(string)
+            print(regex.to_find_defs(string))
             sub_def, def_name, def_variables = regex.to_find_defs(string)
             
             if import_s:
