@@ -17,6 +17,8 @@ class CREATE_UNITTEST_FILE:
             for method in self.dict_from_file['class_name'][class_name]['methods']:
                 if method['def_name'].startswith('__init__'):
                     var = method['def_var'].replace('self,','').replace('self','')
+                    if method['test_dict']['in_action']:
+                        var = method['test_dict']['in_action']
                     class_name_string = class_name_string.replace('()','({})'.format(var))
                 elif not method['def_name'].startswith('_'):
                     var = method['def_var'].replace('self,','').replace('self','')
@@ -24,7 +26,15 @@ class CREATE_UNITTEST_FILE:
                         def_return = ''
                     else:
                         def_return = ': {}'.format(method['def_return'])
-                    method_string = '\n\n\tdef test_{}(self):\n\t\tself.asertEqual({}.{}({}), return_value {})\n\t\tpass\n'.format(method['def_name'], class_obj ,method['def_name'], var, def_return)
+                    if method['test_dict']['action']:
+                        test_action = method['test_dict']['action']
+                        test_action_in = method['test_dict']['in_action']
+                        test_action_out = method['test_dict']['out_action']
+                        if not var:
+                            test_action_in=''
+                        method_string = '\n\n\tdef test_{}(self):\n\t\tself.{}({}.{}({}), {}))\n\t\tpass\n'.format(method['def_name'], test_action, class_obj ,method['def_name'], test_action_in, test_action_out)
+                    else:
+                        method_string = '\n\n\tdef test_{}(self):\n\t\tself.asertEqual({}.{}({}), return_value {})\n\t\tpass\n'.format(method['def_name'], class_obj ,method['def_name'], var, def_return)
                     class_name_string+=method_string
             body_string+='{}\n\n'.format(class_name_string)
         
@@ -111,11 +121,30 @@ class STRING_PATTERN_FINDER:
             return 0    
     
     def to_find_comment(self, string):
+
+        dict_out = {'action':0,'in_action':0,'out_action':0}
+        
         if '#' in string:
             index_comment = string.find('#')
-            return string[index_comment+1:]
+            string_comment = string[index_comment+1:]
+
+            if re.search('in\s+(.*)\s+out',string_comment):
+                dict_out['in_action'] = re.search('in\s+(.*)\s+out',string_comment)[0]
+                dict_out['in_action'] = re.sub('in\s*[(]','',dict_out['in_action'])
+                dict_out['in_action'] = re.sub('[)]\s*out','',dict_out['in_action'])
+                
+            if re.search('out\s*(.*)',string_comment):
+                dict_out['out_action'] = re.search('out\s*(.*)',string_comment)[0]
+                dict_out['out_action'] = re.sub('out\s*[(]','', dict_out['out_action'])
+                dict_out['out_action'] = re.sub('[)]\s*','', dict_out['out_action'])
+                
+            if re.search('is\s+[eq,equal,==,assertequal]+\s+in',string_comment.lower()):
+                dict_out['action'] = 'assertEqual'
+
+            return dict_out
+            
         else:
-            return 0
+            return dict_out
     
     def to_find_import_libs(self, string):
         
@@ -165,7 +194,7 @@ class PYTHON_FILE_TO_DICT:
             from_s, import_s = regex.to_find_import_libs(string)
             class_name, parent_class_name = regex.to_find_class(string)
             sub_def, def_name, def_variables, def_return = regex.to_find_defs(string)
-            
+            dict_comment = regex.to_find_comment(string)
             if import_s:
                 self.dict_for_file['import_libs'].append({'from':from_s, 'import':import_s})
                 
@@ -174,11 +203,11 @@ class PYTHON_FILE_TO_DICT:
                 self.dict_for_file['class_name'][class_name]={'parent':parent_class_name, 'methods':[]}
 
             elif sub_def:
-                self.dict_for_file['class_name'][class_marker]['methods'].append({'def_name':def_name, 'def_var':def_variables, 'def_return':def_return})
+                self.dict_for_file['class_name'][class_marker]['methods'].append({'def_name':def_name, 'def_var':def_variables, 'def_return':def_return, 'test_dict':dict_comment})
             
             elif sub_def==0 and def_name!=0:
                 class_marker = -1
-                self.dict_for_file['stand_alone_def_name'].append({'def_name':def_name, 'variable':def_variables, 'def_return':def_return})
+                self.dict_for_file['stand_alone_def_name'].append({'def_name':def_name, 'variable':def_variables, 'def_return':def_return, 'test_dict':dict_comment})
             
             
         return self.dict_for_file
