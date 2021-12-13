@@ -11,23 +11,28 @@ class CREATE_UNITTEST_FILE:
         body_string = ''
         for class_name in self.dict_from_file['class_name'].keys():
             class_obj = 'self.test_object'
-            class_name_string = 'class Test_{}(unittest.TestCase):'.format(class_name)
-            class_setup_string = '\n\n\tdef setUP(self):\n\n\t\t{} = {}()\n\n'.format(class_obj, class_name)
+            class_name_string = 'class Test_{}(TestCase):'.format(class_name)
+            class_setup_string = '\n\n\tdef setUp(self):\n\n\t\t{} = {}()\n'.format(class_obj, class_name)
             class_name_string+=class_setup_string
             for method in self.dict_from_file['class_name'][class_name]['methods']:
                 if not method['def_name'].startswith('_'):
                     var = method['def_var'].replace('self,','').replace('self','')
-                    method_string = '\n\n\tdef test_{}(self):\n\t\t{}.{}({})\n\t\tpass\n'.format(method['def_name'], class_obj ,method['def_name'], var)
+                    method_string = '\n\n\tdef test_{}(self):\n\t\tself.asertEqual({}.{}({}), return_value)\n\t\tpass\n'.format(method['def_name'], class_obj ,method['def_name'], var)
                     class_name_string+=method_string
             body_string+='{}\n\n'.format(class_name_string)
         
         return body_string
         
+    def __create_head(self):
+        head_start = 'from unittest import TestCase\n'
+        file_name = self.dict_from_file['filename']
+        classes_string = ','.join([cls for cls in self.dict_from_file['class_name']])
+        return '{}from {} import {}\n\n\n\n'.format(head_start, file_name, classes_string)
+        
     def __create_file_content(self):
-    
-        head = 'import unittest\n\n\n\n'
+        head = self.__create_head()
         body = self.__create_file_body()
-        tail = '''\nif __name__==__main__:\n\tuntittest.main()'''
+        tail = '''\nif __name__=="__main__":\n\tuntittest.main()'''
         return '{}{}{}'.format(head,body,tail)
     
     def create_file(self,file_path):
@@ -44,14 +49,14 @@ class STRING_PATTERN_FINDER:
     
     def to_find_class(self, string):
 
-        if 'class ' in string:
+        if re.search('^class ', string):
             
             if string.find('#')<string.find('class') and string.find('#')!=-1:
                 return 0, 0
             
             elif '(' in string and ')' in string:
-                class_name = re.findall('\S+[(]', string)[0].replace('(','').replace(')','')
-                parent_class_name = re.findall('[(]\S+[)]', string)[0].replace('(','').replace(')','')
+                class_name = re.search('\S+\s*[(]', string)[0].replace('(','').replace(')','').replace(' ','')
+                parent_class_name = re.search('[(]\S+[)]', string)[0].replace('(','').replace(')','')
                 return class_name, parent_class_name
 
             else:
@@ -71,23 +76,26 @@ class STRING_PATTERN_FINDER:
             
             elif re.search(r'\s+def\s+.+:', string):
                 sub_def = 1
-                def_name = re.search(r'\s+def.+?[(]', string)[0].replace('(','').replace('def','').replace(' ','')
+                def_name = re.search(r'\s+def.+?[(]', string)[0].replace('(','').replace(' def ','').replace(' ','')
                 variable_names = re.search(r'[(].+?[)]', string)[0].replace('(','').replace(')','').replace(' ','')
                 return sub_def, def_name, variable_names
             
             elif re.search(r'^def\s+.+:', string):
-                def_name = re.search(r'^def.+?[(]', string)[0].replace('(','').replace('def','').replace(' ','')
+                def_name = re.search(r'^def.+?[(]', string)[0][3:].replace('(','').replace(' ','')
                 variable_names = re.search(r'[(].*?[)]', string)[0].replace('(','').replace(')','').replace(' ','')
                 return sub_def, def_name, variable_names
             else:
-                return 0,0,0
-            
+                return 0, 0, 0
         else:
             return 0, 0, 0
     
     
     def to_find_comment(self, string):
-        pass
+        if '#' in string:
+            index_comment = string.find('#')
+            return string[index_comment+1:]
+        else:
+            return 0
     
     def to_find_import_libs(self, string):
         
@@ -105,7 +113,7 @@ class STRING_PATTERN_FINDER:
                 object_in_module = re.search('import .+', string)[0].replace('import', '').replace(' ','')
                 return 0, object_in_module
             else:
-                return 0,0
+                return 0, 0
             
         else:
             return 0,0
@@ -117,7 +125,7 @@ class PYTHON_FILE_TO_DICT:
     def __init__(self, filename):
     
         self.filename = filename
-        self.dict_for_file = {'class_name':{}, 'stand_alone_def_name':[], 'import_libs':[]}
+        self.dict_for_file = {'class_name':{}, 'stand_alone_def_name':[], 'import_libs':[], 'filename':self.filename.replace('.py','')}
     
     def __read_file(self):
         
@@ -130,10 +138,8 @@ class PYTHON_FILE_TO_DICT:
         class_marker = -1
         regex = STRING_PATTERN_FINDER()
         for string in self.__read_file():
-        
             from_s, import_s = regex.to_find_import_libs(string)
             class_name, parent_class_name = regex.to_find_class(string)
-            print(regex.to_find_defs(string))
             sub_def, def_name, def_variables = regex.to_find_defs(string)
             
             if import_s:
